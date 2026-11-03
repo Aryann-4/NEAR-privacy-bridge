@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+/target/
+
+# Environment variables
+frontend/.env
+
+# Build artifacts
+frontend/dist/
+frontend/vite-stats.json
+
+# Midnigh tcontract build
+midnight-contract/dist/
+
+# Personal data
+*.pem
+*.key
+.secret
+
+# Local configuration
+ midnighthash/

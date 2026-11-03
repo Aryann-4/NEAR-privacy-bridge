@@ -1,19 +1,18 @@
-use near_sdk::borsor;
+use near_sdk::borsh;
 use near_sdk::json_types::U128;
 use near_sdk::env;
 use near_sdk::near_bindgen;
 use near_sdk::collections::LookupMap;
 use near_sdk::Promise;
+use near_sdk::serde::{Serialize, Deserialize};
 
 near_sdk::setup_alloc!();
-
-const BRIDGE_SEED: &str = "near-bridge-v1";
 
 // Commitment hash: hash(secret) - matching Midnight's memberId pattern
 type CommitmentHash = [u8; 32];
 
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PartialEqEq, Eq)]
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Eq)]
 pub struct BridgeContract {
     /// Maps commitment hash -> (amount, sender, network origin)
     deposits: LookupMap<CommitmentHash, (U128, AccountId, String)>,
@@ -24,8 +23,8 @@ pub struct BridgeContract {
 }
 
 impl BridgeContract {
-    
-    /// Lock NEAR or tokens on NEAR, emit ZK-proof-friendly event
+
+    /// Init contract
     #[init]
     pub fn new() -> Self {
         Self {
@@ -36,16 +35,24 @@ impl BridgeContract {
     }
 
     /// Lock assets on NEAR - creates commitment hash for ZK proof
+    /// 
+    /// User provides the commitment (hash of their secret) via the commitment parameter.
+    /// In a full implementation, the frontend would generate this using a ZK circuit.
     #[payable]
-    pub fn deposit(&mut self, amount: U128) {
+    pub fn deposit(&mut self, amount: U128, commitment: CommitmentHash) {
         let sender = env::signer_account_id();
-        let deposit_amount = env::attached_deposit();
         
-        // Generate commitment hash: hash(secret) pattern matching Midnight
-        // In production, secret would be provided by user via view/action
-        let mut commitment = [0u8; 32];
-        rand::SeedableRng::from_seed(BRIDGE_SEED.as_bytes())
-            .fill(&mut commitment);
+        // Verify commitment is not a zero hash (basic sanity check)
+        assert!(
+            commitment != [0u8; 32],
+            "Commitment cannot be zero hash"
+        );
+        
+        // Verify commitment is not already used (double-spend protection)
+        assert!(
+            !self.deposits.contains_key(&commitment),
+            "Commitment already locked - double spend"
+        );
         
         // Store deposit mapping
         self.deposits.insert(&commitment, &(amount, sender.clone(), "near".to_string()));
@@ -53,14 +60,19 @@ impl BridgeContract {
         self.all_deposits.insert(&env::block_timestamp(), &commitment);
         
         // Emit event for ZK proof generation
-        env::log_str(&format!("DepositEvent:commitment={:?},amount={},sender={}", 
-            hex::encode(commitment), amount, sender));
-        
-        // Return commitment hash for user to use in ZK proof
-        near_sdk::ext(env::promise_utils()).log(hex::encode(commitment));
+        // Format: DepositEvent:commitment_hex,amount,sender
+        // Observers see commitment hash (meaningless without the secret)
+        let commitment_hex = format!("{:064x}", commitment[0..8]); // first 8 bytes hex
+        env::log_str(&format!(
+            "DepositEvent:commitment={},amount={},sender={}",
+            commitment_hex, amount, sender
+        ));
     }
 
     /// Reveal secret and unlock assets (called after ZK proof verification off-chain)
+    /// 
+    /// After off-chain ZK proof verification confirms the caller knows the secret
+    /// that hashes to the commitment, they can call withdraw to redeem assets.
     #[message]
     pub fn withdraw(&mut self, commitment: CommitmentHash, secret: Vec<u8>) -> bool {
         let sender = env::signer_account_id();
@@ -68,19 +80,26 @@ impl BridgeContract {
         let deposit = self.deposits.get(&commitment);
         match deposit {
             Some((amount, deposited_sender, network)) => {
-                // Verify sender matches (or use authority)
-                assert!(deposited_sender == sender, "Not your deposit");
+                // Verify sender matches (only the original depositor can redeem)
+                assert!(
+                    deposited_sender == sender,
+                    "Not your deposit - only original sender can redeem"
+                );
                 
-                // Remove deposit
+                // Remove deposit from storage
                 self.deposits.remove(&commitment);
                 self.user_deposits.insert(&sender, &user_deposits.get(&sender).unwrap_or(&U128(0)) - amount);
                 
-                // Emit unlock event
-                env::log_str(&format!("UnlockEvent:commitment={:?},amount={},sender={}", 
-                    hex::encode(commitment), amount, sender));
+                // Emit unlock event for ZK proof observers
+                let commitment_hex = format!("{:064x}", commitment[0..8]);
+                env::log_str(&format!(
+                    "UnlockEvent:commitment={},amount={},sender={}",
+                    commitment_hex, amount, sender
+                ));
                 
-                // Cross-call to Midnight to mint private token
-                // (Would use cross-contract call in production)
+                // In production: off-chain ZK proof verified, then:
+                // - Cross-call to Midnight contract to mint private tokens
+                // - Or release original NEAR assets to user
                 
                 true
             }
@@ -105,12 +124,12 @@ impl BridgeContract {
 #[near_bindgen]
 impl BridgeContract {
     /// View only: get deposit details
-    pub fn view_deposit(&self, commitment: [u8; 32]) -> Option<(U128, AccountId, String)> {
+    pub fn view_deposit(&self, commitment: CommitmentHash) -> Option<(U128, AccountId, String)> {
         self.get_deposit(commitment)
     }
 
     /// View only: get user's total deposited amount
-    pub view_user_deposits(&self, account_id: AccountId) -> U128 {
+    pub fn view_user_deposits(&self, account_id: AccountId) -> U128 {
         self.get_user_deposits(account_id)
     }
 }
