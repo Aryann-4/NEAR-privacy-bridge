@@ -1,19 +1,13 @@
-import { useEffect, useState } from "react";
-import { 
-  createDappConnector,
-  DappConnector,
-  Networks,
-  useWindowSize
-} from "@midnight-ntwrk/dapp-connector-api";
+import { createDappConnector } from "@midnight-ntwrk/dapp-connector-api";
 
-// NEAR network configuration
-const NEAR_NETWORK = "mainnet"; // or "testnet" for hackathon
+// NEAR network configuration (for wallet UI display only)
+const NEAR_NETWORK = "mainnet";
 
 // Initialize DApp connector
 const dappConnector = createDappConnector({
-  network: NEAR_NETWORK === "mainnet" 
-    ? Networks.Mainnet 
-    : Networks.Testnet,
+  network: NEAR_NETWORK === "mainnet"
+    ? "mainnet"
+    : "testnet",
 });
 
 // Connect wallet (Lace)
