@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   ShieldCheck, Lock, Zap, CheckCircle, XCircle, 
-  Loader2, Wallet, Eye, EyeOff, Copy, Sparkles, Brain, Network, 
-  Monitor, Code, Shield, Globe, Activity
+  Loader2, Wallet, Eye, EyeOff, Copy, Sparkles, 
+  Monitor, Shield, Globe, Activity, ChevronDown, LogOut
 } from "lucide-react";
 
 interface Particle {
@@ -14,15 +14,13 @@ interface Particle {
 }
 
 function App() {
-  // Mode states
   const [showOverview, setShowOverview] = useState(true);
   const [showBridge, setShowBridge] = useState(false);
   
-  // Wallet state
   const [walletConnected, setWalletConnected] = useState(false);
   const [accountId, setAccountId] = useState("");
+  const [walletOpen, setWalletOpen] = useState(false);
   
-  // Bridge state
   const [amount, setAmount] = useState("");
   const [commitment, setCommitment] = useState("");
   const [secret, setSecret] = useState("");
@@ -30,18 +28,17 @@ function App() {
   
   const [step, setStep] = useState("idle");
   const [txId, setTxId] = useState("");
+  const [txType, setTxType] = useState("");
 
-  // Overview stats
   const [recentTxs, setRecentTxs] = useState<Array<{type: string; amount: string; time: string; status: string}>>([]);
 
-  // Background particles
   const [particles, setParticles] = useState([] as Particle[]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Connect Wallet
   const connectWallet = () => {
     setWalletConnected(true);
     setAccountId(`user-${Math.random().toString(36).substring(2, 8)}.near.testnet`);
+    setWalletOpen(false);
     setRecentTxs([
       { type: "Lock", amount: "5.0 NEAR", time: "2m ago", status: "Confirmed" },
       { type: "Redeem", amount: "3.2 MNIGHT", time: "15m ago", status: "Confirmed" },
@@ -56,9 +53,9 @@ function App() {
     setTxId("");
     setShowOverview(true);
     setShowBridge(false);
+    setWalletOpen(false);
   };
 
-  // Generate commitment hash from secret
   const generateCommitment = () => {
     if (!secret) return "";
     let hash = 0;
@@ -79,7 +76,6 @@ function App() {
     setStep("locked");
     setShowOverview(false);
     setShowBridge(false);
-    
     setRecentTxs(prev => [
       { type: "Lock", amount: `${amount} yoctoNEAR`, time: "Just now", status: "Confirmed" },
       ...prev.slice(0, 4)
@@ -95,7 +91,6 @@ function App() {
     setStep("redeemed");
     setShowOverview(false);
     setShowBridge(false);
-    
     setRecentTxs(prev => [
       { type: "Redeem", amount: "1 MNIGHT", time: "Just now", status: "Confirmed" },
       ...prev.slice(0, 4)
@@ -104,7 +99,6 @@ function App() {
 
   const resetStep = () => { setStep("idle"); setTxId(""); };
 
-  // Background particles animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -183,25 +177,13 @@ function App() {
 
   return (
     <div className="min-h-screen relative overflow-hidden font-sans selection:bg-amber-500 selection:text-slate-900">
-      {/* Background Mesh Gradient */}
       <div className="bg-mesh fixed inset-0 z-[-3] pointer-events-none"></div>
-      
-      {/* Gradient Blobs */}
       <div className="mesh-blob blob-1"></div>
       <div className="mesh-blob blob-2"></div>
       <div className="mesh-blob blob-3"></div>
-      
-      {/* Grid Pattern */}
       <div className="grid-dots fixed inset-0 z-[-3] pointer-events-none"></div>
-      
-      {/* Canvas Particles */}
-      <canvas 
-        ref={canvasRef}
-        className="fixed inset-0 z-[-2] pointer-events-none" 
-        style={{ opacity: 0.4 }}
-      />
+      <canvas ref={canvasRef} className="fixed inset-0 z-[-2] pointer-events-none" style={{ opacity: 0.4 }} />
 
-      {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/70 backdrop-blur-xl border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between px-2 sm:px-4">
           <div className="flex items-center gap-3 cursor-pointer group">
@@ -215,7 +197,6 @@ function App() {
           </div>
 
           <div className="hidden sm:flex items-center gap-8">
-            {/* Navigation Links */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => { setShowOverview(true); setShowBridge(false); }}
@@ -234,23 +215,17 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="relative group">
             {walletConnected ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-900/20 rounded-full text-xs font-medium text-green-400 border border-green-500/30 animate-pulse-glow">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  NEAR Testnet
+              <button
+                onClick={() => setWalletOpen(!walletOpen)}
+                className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2.5 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-300 truncate max-w-[150px]">{accountId}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-500 transition-transform duration-200" style={{ transform: walletOpen ? 'rotate(180deg)' : '' }} />
                 </div>
-                <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
-                  <span className="text-xs font-medium text-slate-300 truncate max-w-xs">{accountId}</span>
-                  <button
-                    onClick={disconnectWallet}
-                    className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10"
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              </button>
             ) : (
               <button
                 onClick={connectWallet}
@@ -260,14 +235,38 @@ function App() {
                 Connect Wallet
               </button>
             )}
+            {walletOpen && walletConnected && (
+              <div className="absolute right-0 mt-2 w-64 bg-slate-800/90 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl z-50 animate-fade-in-up">
+                <div className="p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-purple-600 rounded-xl flex items-center justify-center text-slate-900 shadow-lg">
+                      <Wallet className="w-5 h-5" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-sm font-bold text-slate-100 truncate">{accountId}</p>
+                      <p className="text-xs text-slate-500 font-mono truncate">{accountId}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-900/20 rounded-full text-xs font-medium text-green-400 border border-green-500/30 mb-4 animate-pulse-glow">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    NEAR Testnet
+                  </div>
+                  <button
+                    onClick={disconnectWallet}
+                    className="w-full py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-medium hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* ========== OVERVIEW SECTION ========== */}
       {showOverview && (
         <>
-          {/* Hero Section */}
           <header className="relative pt-24 pb-20 px-4 sm:px-6 lg:px-8 z-10">
             <div className="max-w-7xl mx-auto">
               <div className="text-center">
@@ -275,29 +274,24 @@ function App() {
                   <Sparkles className="w-4 h-4" />
                   Zero-Knowledge Privacy Bridge
                 </div>
-                
                 <h2 className="mt-6 text-5xl md:text-7xl font-extrabold text-slate-100 mb-6 tracking-tight animate-slide-up" style={{ animationDelay: "0.1s" }}>
                   Move Assets<span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-purple-400"> Privately</span><br/>
                   Across Chains
                 </h2>
-                
                 <p className="mt-4 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto animate-slide-up" style={{ animationDelay: "0.2s" }}>
                   Lock assets on NEAR, generate zero-knowledge proofs, and mint private tokens on Midnight. 
                   Your wallet address and transaction amounts stay private — only commitment hashes appear on-chain.
                 </p>
-                
                 <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.3s" }}>
                   {walletConnected ? (
-                    <>
-                      <button onClick={() => setShowBridge(true)} className="btn-primary flex-1 px-8 py-4 flex items-center justify-center gap-2">
-                        <Activity className="w-5 h-5" />
-                        Bridge Assets
-                      </button>
-                    </>
+                    <button onClick={() => setShowBridge(true)} className="btn-primary flex-1 px-8 py-4 flex items-center justify-center gap-2">
+                      <Activity className="w-5 h-5" />
+                      Bridge Assets
+                    </button>
                   ) : (
-                    <button onClick={connectWallet} className="btn-primary flex-1 px-8 py-4">
+                    <button onClick={connectWallet} className="btn-primary flex-1 px-8 py-4 flex items-center justify-center gap-2">
                       <Wallet className="w-5 h-5 mr-2" />
-                      Connect Wallet
+                      Connect Wallet to Start
                     </button>
                   )}
                 </div>
@@ -305,7 +299,6 @@ function App() {
             </div>
           </header>
 
-          {/* Overview Stats - Simple 3 cards */}
           <section className="px-4 sm:px-6 lg:px-8 py-12 z-10">
             <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up">
@@ -346,7 +339,6 @@ function App() {
             </div>
           </section>
 
-          {/* Privacy Model - Simple */}
           <section className="border-t border-slate-700/50 bg-slate-900/60 backdrop-blur-md py-20 px-4 sm:px-6 lg:px-8 z-10 relative">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-12 animate-fade-in-up">
@@ -355,7 +347,6 @@ function App() {
                   Traditional bridges expose wallet addresses and amounts. Our ZK-proof architecture keeps everything confidential.
                 </p>
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in-up stagger-1">
                 <div className="info-card animate-fade-in-up stagger-2">
                   <div className="flex items-center gap-3 mb-5">
@@ -368,7 +359,6 @@ function App() {
                     <li className="flex items-start gap-2"><span className="text-amber-400">▸</span> ZK proof validity checks</li>
                   </ul>
                 </div>
-                
                 <div className="info-card animate-fade-in-up stagger-3">
                   <div className="flex items-center gap-3 mb-5">
                     <EyeOff className="w-6 h-6 text-purple-400" />
@@ -381,27 +371,44 @@ function App() {
                   </ul>
                 </div>
               </div>
+              <div className="mt-12 p-8 bg-gradient-to-r from-amber-600 via-purple-600 to-indigo-600 rounded-3xl text-white shadow-2xl shadow-amber-500/25 relative overflow-hidden animate-fade-in-up">
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div>
+                    <h4 className="font-bold text-xl mb-2">Users Prove Without Revealing</h4>
+                    <p className="text-amber-100 text-sm opacity-90 max-w-md">
+                      "I am a valid member" • "I authorize payment" • Verified via ZK circuits without exposing secrets
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="text-3xl font-bold mb-1">0%</div>
+                      <p className="text-xs text-amber-200 font-medium tracking-wider uppercase">Data Exposed</p>
+                    </div>
+                    <div className="w-1 h-20 bg-white/20 rounded mx-2"></div>
+                    <div className="flex flex-col items-center">
+                      <div className="text-3xl font-bold mb-1">100%</div>
+                      <p className="text-xs text-purple-200 font-medium tracking-wider uppercase">Privacy Preserved</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
         </>
       )}
 
-      {/* ========== BRIDGE SECTION ========== */}
       {showBridge && (
         <>
-          {/* Bridge Header */}
           <header className="relative pt-24 pb-12 px-4 sm:px-6 lg:px-8 z-10">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-extrabold text-slate-100 mb-4">Bridge Assets</h2>
                 <p className="text-slate-400 max-w-lg mx-auto">Lock assets on NEAR, redeem privately on Midnight</p>
               </div>
-              
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Lock Panel */}
                 <section className="glass-card p-8 relative overflow-hidden">
                   <div className="relative z-10 flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20">
+                    <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20">
                       <Lock className="w-6 h-6" />
                     </div>
                     <div>
@@ -409,7 +416,6 @@ function App() {
                       <p className="text-xs text-slate-500 mt-1 font-medium">Convert NEAR → Private Midnight Tokens</p>
                     </div>
                   </div>
-                  
                   <div className="space-y-4 relative z-10">
                     <div>
                       <label className="block text-sm font-semibold text-slate-300 mb-2">Amount to Lock</label>
@@ -427,7 +433,6 @@ function App() {
                         />
                       </div>
                     </div>
-                    
                     <div>
                       <label className="block text-sm font-semibold text-slate-300 mb-2">Commitment Hash</label>
                       <div className="relative">
@@ -450,7 +455,6 @@ function App() {
                         </button>
                       </div>
                     </div>
-                    
                     <button onClick={lockAssets} disabled={!amount || !commitment || step !== "idle"} className="w-full py-4 bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-600 hover:to-purple-700 text-slate-900 font-bold rounded-2xl transition-all duration-300 shadow-lg shadow-amber-500/30 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed">
                       {step === "locking" ? (
                         <span className="flex items-center justify-center gap-2">
@@ -467,10 +471,9 @@ function App() {
                   </div>
                 </section>
 
-                {/* Redeem Panel */}
                 <section className="glass-card p-8 relative overflow-hidden">
                   <div className="relative z-10 flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 shadow-lg shadow-purple-500/20">
+                    <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 shadow-lg shadow-purple-500/20">
                       <Zap className="w-6 h-6" />
                     </div>
                     <div>
@@ -478,7 +481,6 @@ function App() {
                       <p className="text-xs text-slate-500 mt-1 font-medium">Burn Private Tokens → Unlock NEAR Assets</p>
                     </div>
                   </div>
-                  
                   <div className="space-y-4 relative z-10">
                     <div>
                       <label className="block text-sm font-semibold text-slate-300 mb-2">Commitment Hash</label>
@@ -491,7 +493,6 @@ function App() {
                         disabled={step === "locking" || step === "redeeming"}
                       />
                     </div>
-                    
                     <div>
                       <label className="block text-sm font-semibold text-slate-300 mb-2">Secret (Private Witness)</label>
                       <div className="relative">
@@ -510,7 +511,6 @@ function App() {
                         </button>
                       </div>
                     </div>
-                    
                     <button onClick={redeemAssets} disabled={!commitment || step !== "idle"} className="w-full py-4 bg-white/5 border border-slate-700 hover:bg-slate-700/50 text-slate-300 font-bold rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                       {step === "redeeming" ? (
                         <span className="flex items-center justify-center gap-2">
@@ -529,38 +529,36 @@ function App() {
               </div>
             </div>
           </header>
+
+          {walletConnected && (
+            <section className="px-4 sm:px-6 lg:px-8 pt-8 pb-16 z-10 animate-fade-in-up">
+              <div className="max-w-7xl mx-auto glass-card p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 bg-gradient-to-r from-amber-500 to-purple-600 rounded-2xl flex items-center justify-center text-slate-900 shadow-lg shadow-amber-500/30">
+                      <Wallet className="w-5 h-5" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <h3 className="font-bold text-slate-100 leading-none">Connected Wallet</h3>
+                      <p className="text-xs text-slate-500 truncate font-mono">{accountId}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full border bg-green-900/20 text-green-400 border-green-500/30 animate-pulse-glow">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+                      NEAR Testnet
+                    </span>
+                    <button onClick={disconnectWallet} className="p-2 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10">
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
         </>
       )}
 
-      {/* Wallet Status */}
-      {walletConnected && showBridge && (
-        <section className="px-4 sm:px-6 lg:px-8 pt-8 pb-16 z-10 animate-fade-in-up">
-          <div className="max-w-7xl mx-auto glass-card p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-11 h-11 bg-gradient-to-r from-amber-500 to-purple-600 rounded-2xl flex items-center justify-center text-slate-900 shadow-lg shadow-amber-500/30">
-                  <Wallet className="w-5 h-5" />
-                </div>
-                <div className="overflow-hidden">
-                  <h3 className="font-bold text-slate-100 leading-none">Connected Wallet</h3>
-                  <p className="text-xs text-slate-500 truncate font-mono">{accountId}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full border bg-green-900/20 text-green-400 border-green-500/30 animate-pulse-glow">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
-                  NEAR Testnet
-                </span>
-                <button onClick={disconnectWallet} className="p-2 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10">
-                  <XCircle className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Footer */}
       <footer className="border-t border-slate-700/50 bg-slate-900/60 backdrop-blur-md py-12 px-4 sm:px-6 lg:px-8 z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
@@ -582,7 +580,6 @@ function App() {
         </div>
       </footer>
 
-      {/* Success Toast */}
       {(step === "locked" || step === "redeemed") && (
         <div className="fixed bottom-6 right-6 z-50">
           <div className="bg-slate-800 border border-green-500/30 text-green-400 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in-up">
