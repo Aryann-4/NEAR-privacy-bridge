@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   ShieldCheck, Lock, Zap, CheckCircle, XCircle, 
-  Loader2, Wallet, Eye, EyeOff, Copy, Sparkles, 
-  Monitor, Shield, Globe, Activity, ChevronDown, LogOut
+  Loader2, Wallet, Eye, EyeOff, Copy, Sparkles, Activity, LogOut,
+  ChevronDown
 } from "lucide-react";
 
 interface Particle {
@@ -14,7 +14,6 @@ interface Particle {
 }
 
 function App() {
-  const [showOverview, setShowOverview] = useState(true);
   const [showBridge, setShowBridge] = useState(false);
   
   const [walletConnected, setWalletConnected] = useState(false);
@@ -28,7 +27,6 @@ function App() {
   
   const [step, setStep] = useState("idle");
   const [txId, setTxId] = useState("");
-  const [txType, setTxType] = useState("");
 
   const [recentTxs, setRecentTxs] = useState<Array<{type: string; amount: string; time: string; status: string}>>([]);
 
@@ -39,6 +37,7 @@ function App() {
     setWalletConnected(true);
     setAccountId(`user-${Math.random().toString(36).substring(2, 8)}.near.testnet`);
     setWalletOpen(false);
+    setShowBridge(true);
     setRecentTxs([
       { type: "Lock", amount: "5.0 NEAR", time: "2m ago", status: "Confirmed" },
       { type: "Redeem", amount: "3.2 MNIGHT", time: "15m ago", status: "Confirmed" },
@@ -51,7 +50,6 @@ function App() {
     setAccountId("");
     setStep("idle");
     setTxId("");
-    setShowOverview(true);
     setShowBridge(false);
     setWalletOpen(false);
   };
@@ -74,8 +72,6 @@ function App() {
     setTxId("near_" + Math.random().toString(36).substring(2, 15));
     setTxType("lock");
     setStep("locked");
-    setShowOverview(false);
-    setShowBridge(false);
     setRecentTxs(prev => [
       { type: "Lock", amount: `${amount} yoctoNEAR`, time: "Just now", status: "Confirmed" },
       ...prev.slice(0, 4)
@@ -89,8 +85,6 @@ function App() {
     setTxId("midnight_" + Math.random().toString(36).substring(2, 15));
     setTxType("redeem");
     setStep("redeemed");
-    setShowOverview(false);
-    setShowBridge(false);
     setRecentTxs(prev => [
       { type: "Redeem", amount: "1 MNIGHT", time: "Just now", status: "Confirmed" },
       ...prev.slice(0, 4)
@@ -184,6 +178,7 @@ function App() {
       <div className="grid-dots fixed inset-0 z-[-3] pointer-events-none"></div>
       <canvas ref={canvasRef} className="fixed inset-0 z-[-2] pointer-events-none" style={{ opacity: 0.4 }} />
 
+      {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/70 backdrop-blur-xl border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between px-2 sm:px-4">
           <div className="flex items-center gap-3 cursor-pointer group">
@@ -199,13 +194,13 @@ function App() {
           <div className="hidden sm:flex items-center gap-8">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => { setShowOverview(true); setShowBridge(false); }}
-                className={`text-sm font-medium transition-colors ${showOverview ? 'text-amber-400' : 'text-slate-400 hover:text-amber-400'}`}
+                onClick={() => setShowBridge(false)}
+                className={`text-sm font-medium transition-colors ${!showBridge ? 'text-amber-400' : 'text-slate-400 hover:text-amber-400'}`}
               >
                 Overview
               </button>
               <button
-                onClick={() => { setShowBridge(true); setShowOverview(false); }}
+                onClick={() => setShowBridge(true)}
                 className={`text-sm font-medium transition-colors ${showBridge ? 'text-amber-400' : 'text-slate-400 hover:text-amber-400'}`}
               >
                 Bridge
@@ -226,15 +221,7 @@ function App() {
                   <ChevronDown className="w-3 h-3 text-slate-500 transition-transform duration-200" style={{ transform: walletOpen ? 'rotate(180deg)' : '' }} />
                 </div>
               </button>
-            ) : (
-              <button
-                onClick={connectWallet}
-                className="btn-primary px-4 py-2 text-sm"
-              >
-                <Wallet className="w-3.5 h-3.5 mr-1.5" />
-                Connect Wallet
-              </button>
-            )}
+            ) : null}
             {walletOpen && walletConnected && (
               <div className="absolute right-0 mt-2 w-64 bg-slate-800/90 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl z-50 animate-fade-in-up">
                 <div className="p-4">
@@ -265,7 +252,12 @@ function App() {
         </div>
       </nav>
 
-      {showOverview && (
+      {walletOpen && (
+        <div className="fixed inset-0 z-40" onClick={() => setWalletOpen(false)} />
+      )}
+
+      {/* ========== OVERVIEW SECTION ========== */}
+      {!showBridge && (
         <>
           <header className="relative pt-24 pb-20 px-4 sm:px-6 lg:px-8 z-10">
             <div className="max-w-7xl mx-auto">
@@ -283,17 +275,10 @@ function App() {
                   Your wallet address and transaction amounts stay private — only commitment hashes appear on-chain.
                 </p>
                 <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.3s" }}>
-                  {walletConnected ? (
-                    <button onClick={() => setShowBridge(true)} className="btn-primary flex-1 px-8 py-4 flex items-center justify-center gap-2">
-                      <Activity className="w-5 h-5" />
-                      Bridge Assets
-                    </button>
-                  ) : (
-                    <button onClick={connectWallet} className="btn-primary flex-1 px-8 py-4 flex items-center justify-center gap-2">
-                      <Wallet className="w-5 h-5 mr-2" />
-                      Connect Wallet to Start
-                    </button>
-                  )}
+                  <button onClick={connectWallet} className="btn-primary flex-1 px-8 py-4 flex items-center justify-center gap-2">
+                    <Wallet className="w-5 h-5 mr-2" />
+                    Connect Wallet
+                  </button>
                 </div>
               </div>
             </div>
@@ -397,6 +382,7 @@ function App() {
         </>
       )}
 
+      {/* ========== BRIDGE SECTION (POPS UP WHEN WALLET CONNECTED) ========== */}
       {showBridge && (
         <>
           <header className="relative pt-24 pb-12 px-4 sm:px-6 lg:px-8 z-10">
@@ -530,32 +516,30 @@ function App() {
             </div>
           </header>
 
-          {walletConnected && (
-            <section className="px-4 sm:px-6 lg:px-8 pt-8 pb-16 z-10 animate-fade-in-up">
-              <div className="max-w-7xl mx-auto glass-card p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 bg-gradient-to-r from-amber-500 to-purple-600 rounded-2xl flex items-center justify-center text-slate-900 shadow-lg shadow-amber-500/30">
-                      <Wallet className="w-5 h-5" />
-                    </div>
-                    <div className="overflow-hidden">
-                      <h3 className="font-bold text-slate-100 leading-none">Connected Wallet</h3>
-                      <p className="text-xs text-slate-500 truncate font-mono">{accountId}</p>
-                    </div>
+          <section className="px-4 sm:px-6 lg:px-8 pt-8 pb-16 z-10 animate-fade-in-up">
+            <div className="max-w-7xl mx-auto glass-card p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 bg-gradient-to-r from-amber-500 to-purple-600 rounded-2xl flex items-center justify-center text-slate-900 shadow-lg shadow-amber-500/30">
+                    <Wallet className="w-5 h-5" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full border bg-green-900/20 text-green-400 border-green-500/30 animate-pulse-glow">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
-                      NEAR Testnet
-                    </span>
-                    <button onClick={disconnectWallet} className="p-2 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10">
-                      <XCircle className="w-4 h-4" />
-                    </button>
+                  <div className="overflow-hidden">
+                    <h3 className="font-bold text-slate-100 leading-none">Connected Wallet</h3>
+                    <p className="text-xs text-slate-500 truncate font-mono">{accountId}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full border bg-green-900/20 text-green-400 border-green-500/30 animate-pulse-glow">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+                    NEAR Testnet
+                  </span>
+                  <button onClick={disconnectWallet} className="p-2 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10">
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </section>
-          )}
+            </div>
+          </section>
         </>
       )}
 
