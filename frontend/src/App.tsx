@@ -236,9 +236,9 @@ function App() {
             ) : (
               <button
                 onClick={connectWallet}
-                className="btn-primary px-6 py-2.5"
+                className="btn-primary px-4 py-2 text-sm"
               >
-                <Wallet className="w-4 h-4 mr-2" />
+                <Wallet className="w-3.5 h-3.5 mr-1.5" />
                 Connect Wallet
               </button>
             )}
@@ -296,9 +296,9 @@ function App() {
                   </button>
                 </>
               ) : (
-                <button onClick={connectWallet} className="btn-primary flex-1 px-8 py-4">
-                  <Wallet className="w-5 h-5 mr-2" />
-                  Connect Wallet to Start
+                <button onClick={connectWallet} className="btn-primary px-6 py-3 text-base">
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Connect Wallet
                 </button>
               )}
             </div>
@@ -364,7 +364,7 @@ function App() {
                     placeholder="1000000000000000000000000"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="input-field w-full px-5 py-4 pl-16"
+                    className="input-field w-full pl-10 pr-4 py-3.5 text-right"
                     disabled={step === "locking" || step === "redeeming"}
                   />
                 </div>
