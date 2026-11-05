@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>React Test</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(
+            React.createElement('div', { style: { padding: '40px', background: '#0f172a', color: '#fff', fontFamily: 'sans-serif' } },
+                React.createElement('h1', null, 'NEAR→Midnight Privacy Bridge'),
+                React.createElement('button', { onClick: () => alert('Connected!') }, 'Connect Wallet')
+            )
+        );
+    </script>
+</body>
+</html>
