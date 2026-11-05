@@ -9,13 +9,33 @@ frontend/.env
 frontend/dist/
 frontend/vite-stats.json
 
-# Midnigh tcontract build
+# Midnight contract build
 midnight-contract/dist/
+
+# Skill directories (do not commit)
+.roo/
+.trae/
+.warp/
+.windsurf/
+.claude/
+.factory/
+.agents/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
 
 # Personal data
 *.pem
 *.key
 .secret
 
-# Local configuration
- midnighthash/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
