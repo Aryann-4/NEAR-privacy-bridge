@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "frontend/package.json", "use": "@vercel/static-build" }
+  ],
+  "routes": [
+    { "src": "/static/(.*)", "dest": "frontend/dist/static/$1" },
+    { "src": "/assets/(.*)", "dest": "frontend/dist/assets/$1" },
+    { "src": "/favicon.ico", "dest": "frontend/dist/favicon.ico" },
+    { "src": "/(.*)", "dest": "frontend/dist/index.html" }
+  ]
+}

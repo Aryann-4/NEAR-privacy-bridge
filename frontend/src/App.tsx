@@ -105,13 +105,12 @@ function App() {
 
   return (
     <div className="min-h-screen relative overflow-hidden font-sans selection:bg-amber-500 selection:text-slate-900">
-      {/* Background gradient blobs - dark theme */}
+      {/* Background gradient blobs */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[700px] h-[700px] bg-amber-900/20 rounded-full blur-[120px] opacity-[0.3] animate-float"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[800px] h-[800px] bg-purple-900/20 rounded-full blur-[120px] opacity-[0.3] animate-float" style={{ animationDelay: "2s" }}></div>
         <div className="absolute top-[20%] left-[40%] w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[100px] opacity-[0.3] animate-float" style={{ animationDelay: "4s" }}></div>
         
-        {/* Subtle grid pattern */}
         <div className="absolute inset-0 [mask-image:linear-gradient(black,transparent)] opacity-10 pointer-events-none" style="background-image:url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjIiIGhlaWdodD0iMiIgZmlsbD0iIzAwMCIgZmlsbC1vcGFjaXR5PSIwLjA1Ii8+Cjwvc3ZnPg==')"></div>
       </div>
 
