@@ -643,7 +643,7 @@ function App() {
           </div>
           
           <div className="mt-12 p-8 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl text-white shadow-2xl shadow-blue-500/25 relative overflow-hidden animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%25%22 height=%22100%25%22 viewBox=%220 0 100 100%22><path d=%22M10 10h5v5h-5zM50 50h5v5h-5zM90 90h5v5h-5z%22 fill=%22rgba(255,255,255,0.05)%22 fill-opacity=%220.05%22/%3E</svg>')"], opacity: 0.3"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;charset=utf-8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 100 100%22><rect fill=%22%23ffffff%22 fill-opacity=%220.03%22 width=%22100%22 height=%22100%22 rx=%2210%22 ry=%2210%22/></svg>')], opacity: 0.3 rounded-3xl"></div>
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <h4 className="font-bold text-xl mb-2">Users Prove Without Revealing</h4>
