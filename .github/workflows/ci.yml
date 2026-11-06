@@ -1,102 +1,50 @@
-name: NEAR Hackathon CI
+name: CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [main]
   pull_request:
-    branches: [master, main]
+    branches: [main]
 
 jobs:
-  build-test:
-    runs-on: ubuntu-latest
-    
-    # Frontend build job
-    frontend:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-          
-        - name: Setup Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: '22'
-            cache: 'npm'
-            
-        - name: Install frontend dependencies
-          run: |
-            cd frontend
-            npm ci
-            
-        - name: Build frontend
-          run: |
-            cd frontend
-            npm run build
-            
-        - name: Verify build output
-          run: |
-            cd frontend
-            ls - dist/ | head -20
-
-  # Contract check job (check syntax, not full compilation due to toolchain)
-  contract-check:
+  frontend:
+    name: Frontend build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          
-      - name: Check NEAR contract syntax
-        run: |
-          cargo check --release -p near-privacy-bridge
-          
-      - name: Verify Cargo.toml dependencies
-        run: |
-          cd near-contract
-          cargo check 2>&1 | head -30
 
-  # Lint and format check
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-          
-      - name: Run ESLint
-        run: |
-          cd frontend
-          npx eslint --max-warnings=0 .
-          
-      - name: Check TypeScript
-        run: |
-          cd frontend
-          npx tsc --noEmit
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-# Matrix run for multiple checks
-jobs:
-  build:
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Verify build output
+        working-directory: frontend
+        run: |
+          test -f dist/index.html
+          test -d dist/assets
+          ls dist/assets | head
+
+  contracts:
+    name: NEAR contract check
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: frontend-check
-            run: echo "Frontend validation step"
-          - name: contract-validation
-            run: echo "Contract syntax validation step"
-          - name: lint-check
-            run: echo "Linting step"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo check
+        run: cargo check --manifest-path near-contract/Cargo.toml

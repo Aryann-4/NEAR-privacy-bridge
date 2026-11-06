@@ -1,219 +1,131 @@
-# NEAR-Midnight Privacy Bridge
+# NEAR × Midnight Privacy Bridge
 
-**Cross-chain private asset transfer between NEAR and Midnight blockchains**
+**Private cross-chain settlement between NEAR and Midnight, powered by zero-knowledge commitments.**
 
-> ## 🎯 Hackathon Submission for NEAR HACKATHON 2026
-> 
-> Built at NEAR HACKATHON | Track: `privacy`, `defi`, `realworld`
-> 
-> Privacy-preserving bridge enabling users to move assets between NEAR and Midnight
-> without revealing transaction details on-chain.
+> Built for NEAR HACKATHON 2026 · Tracks: `privacy`, `defi`, `realworld`
 
----
+[Live demo](https://aryann-4.github.io/NEAR-privacy-bridge/) · [Repository](https://github.com/Aryann-4/NEAR-privacy-bridge)
 
-## 📖 Problem Statement
-
-Traditional cross-chain bridges require users to expose their wallet addresses, transaction amounts, and asset types on public blockchains. This creates privacy risks for:
-- **Sensitive financial operations** (medical expenses, business debts, personal transfers)
-- **Competitive trading** (front-running, sniper bots)
-- **Whale monitoring** (large holders being tracked)
-
-**Our solution:** A ZK-proof-based privacy bridge that lets users move assets between NEAR and Midnight while revealing only commitment hashes — not sender, receiver, or amount details.
+![Landing page](docs/landing.png)
 
 ---
 
-## 🏗️ Architecture
+## The problem
 
-```
-┌─────────────────┐         ┌────────────────────┐
-│   User Wallet   │         │   Midnight Node    │
-│ (Lace + NEAR)   │◀───────▶│ (Private ZK Circuits)│
-└────────┬────────┘         └────────┬───────────┘
-         │ Lock assets                │ Mint private tokens
-         │------------------→        │ (commitment = hash(secret))
-         │ Generate ZK proof        │
-         │←------------------        │
-         │ Unlock assets            │
-         │ Burn private tokens      │
-         ↓                          ↓
-┌─────────────────┐         ┌────────────────────┐
-│  NEAR Contract  │         │  Midnight Contract │
-│  (Lock/Unlock)  │         │ (Mint/Burn)        │
-└─────────────────┘         └────────────────────┘
+Traditional bridges publish a complete trail: who moved what, to which chain, and when. That is unacceptable for payroll, business payments, private trading, or simply holding assets without being profiled.
+
+This project breaks the link between the two chains. A user locks assets on NEAR and receives a **commitment hash** — `SHA-256(secret)`. Only the hash is public. On Midnight, the user proves knowledge of the secret in zero knowledge and claims the private balance. Observers can verify that a valid claim happened, but cannot link it back to the depositor.
+
+## How it works
+
+```text
+        lock(amount, commitment)                claim(commitment, proof)
+NEAR ───────────────────────────▶ ▼ ───────────────────────────▶ Midnight
+                                  │
+                        commitment = SHA-256(secret)
+                        secret stays on the user's device
 ```
 
-### Core Components
+1. **Lock on NEAR** — the bridge contract stores the amount against the commitment hash.
+2. **Keep the witness private** — the browser generates a random 32-byte secret and hashes it locally. The secret never leaves the device.
+3. **Redeem on Midnight** — a relayer verifies the ZK proof and releases the private balance. The same commitment cannot be spent twice.
 
-1. **NEAR Smart Contract** (`near-contract/`): Lock/unlock assets, emit commitment-hash events
-2. **Midnight Compact Contract** (`midnight-contract/`): Mint/burn private tokens using ZK proofs
-3. **ZK Proof System**: Prove knowledge of secret without revealing it (using hash(secret) = commitment)
-4. **Frontend** (`frontend/`): React + Vite + Tailwind + Lace wallet integration
+The frontend implements the full commitment lifecycle: generation, downloadable claim file, and local proof verification. The contracts in this repo implement the on-chain lock and redemption logic.
 
----
+## Demo
 
-## 🔒 Privacy Model
+![Dashboard](docs/dashboard.png)
 
-| **PUBLIC (on-chain)** | **PRIVATE (off-chain/witness)** |
+**What works today**
+
+- Real NEAR testnet wallet login through [`@hot-labs/near-connect`](https://github.com/hot-dao/near-selector), with session restore and disconnect.
+- Live account balance fetched from NEAR RPC.
+- Client-side SHA-256 commitment generation, copy/download, and local witness verification.
+- Persistent recent-activity list and a wallet overview popup.
+- Responsive dark UI with animated background, accessibility-minded focus states, and a NEAR-native aesthetic.
+
+**Testnet preview**
+
+- On-chain `deposit` / `withdraw` calls are not wired into the UI yet. The bridge button generates and verifies real commitments locally; no funds move.
+- Protocol metrics shown in the dashboard are illustrative, not live TVL.
+- The NEAR and Midnight contracts are included as source and are intended for testnet deployment.
+
+## Tech stack
+
+| Layer | Technology |
 | --- | --- |
-| Commitment hashes (`memberId = hash(secret)`) | Wallet addresses |
-| Token transfer amounts (public values) | Member names/labels |
-| ZK proof validity | Expense descriptions |
-| Net debt values linked to hash pairs | Individual expense amounts |
-|  | Who paid for what |
-|  | Organizer secrets |
+| Frontend | React 18, Vite 5, Tailwind CSS, TypeScript |
+| Wallet | NEAR Connect (`@hot-labs/near-connect`), `near-api-js` RPC |
+| NEAR contract | Rust + `near-sdk` |
+| Midnight contract | Compact |
+| Privacy primitive | `commitment = SHA-256(secret)` |
+| Hosting | GitHub Pages (public demo), Vercel-compatible |
 
-**Users prove:** "I am a valid member" / "I authorize payment" — via ZK circuits without revealing secrets.
+## Repository layout
 
----
+```text
+frontend/                     React app (login, bridge, wallet, activity)
+  src/WalletContext.tsx       NEAR Connect provider, session + balance
+  src/components/             Landing, Dashboard, BridgeCard, AccountModal
+  src/lib/commitment.ts       SHA-256 commitment generation + verification
+near-contract/                NEAR lock/unlock contract
+midnight-contract/            Midnight Compact bridge contract
+.github/workflows/            CI and GitHub Pages deployment
+docs/                         Screenshots used in this README
+```
 
-## 🚀 Getting Started
+## Run locally
 
-### Prerequisites
-
-- **Node.js v22+** (your workspace already has this)
-- **Lace wallet** browser extension (Chrome/Firefox)
-- **Docker** (for ZK proof server)
-- **NEAR testnet account** (create via NEAR CLI)
-- **Midnight testnet funds** (from faucet)
-
-### Installation
+Requirements: Node.js 20+ and a NEAR testnet account (for login).
 
 ```bash
-# 1. Clone
-git clone https://github.com/your-username/near-privacy-bridge.git
-cd near-privacy-bridge
-
-# 2. Install dependencies
-cd app && npm install  # frontend
-cd ../near-contract && npm install  # or cargo install
-
-# 3. Start proof server (required for ZK proofs)
-docker run -d --name proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0
-
-# 4. Set environment variables
-cp .env.example .env
-# Fill in your NEAR account, contract addresses, etc.
-
-# 5. Start frontend
-cd frontend && npm run dev
+git clone https://github.com/Aryann-4/NEAR-privacy-bridge.git
+cd NEAR-privacy-bridge/frontend
+npm install
+npm run dev
 ```
 
-Open http://localhost:5173 in Chrome with Lace wallet installed.
+Open <http://localhost:5173>. Click **Connect NEAR Wallet** and choose a wallet from the NEAR Connect modal. No private keys are handled by the app.
 
----
+Production build:
 
-## 📦 Usage Guide
+```bash
+npm run build
+npm run preview
+```
 
-### **Lock Assets on NEAR**
+## Contracts
 
-1. Connect your Lace wallet (NEAR testnet)
-2. Enter amount to lock (in NEAR)
-3. Enter commitment hash (0x + 64 hex chars — hash of your secret)
-4. Click "Lock Assets on NEAR"
-5. Transaction is submitted; you receive a tx ID
+**NEAR** (`near-contract/`): stores `commitment → (amount, sender, origin)`, rejects duplicate commitments, and emits deposit/unlock events.
 
-### **Generate ZK Proof (off-chain)**
+**Midnight** (`midnight-contract/contract/src/bridge.compact`): stores commitments, verifies the private witness, and prevents double spends. Secrets are used as private witness data and are never persisted on-chain.
 
-The proof proves you know the secret that hashes to the commitment. This can be generated:
+> The contracts have not been deployed by this repository's CI. Deploy them to testnet and add the contract IDs to the frontend before enabling real settlement.
 
-- **Locally** using Noir circuits (recommended for hackathon)
-- **Via proof server** (Docker running on port 6300)
-- **Using Midnight.js SDK** private state operations
+## Privacy model
 
-### **Redeem on Midnight**
-
-1. Enter the commitment hash from your NEAR deposit
-2. Provide the secret (the value that hashes to the commitment)
-3. Click "Redeem Assets on Midnight"
-4. ZK proof is verified off-chain
-5. Private tokens are minted on Midnight
-6. You can now use private assets on Midnight network
-
-### **Redeem Back to NEAR**
-
-1. On Midnight, use the `withdraw` function with your secret
-2. Commitment is consumed (prevents double-spend)
-3. NEAR contract releases original assets
-4. Funds return to your NEAR wallet
-
----
-
-## 🛠️ Tech Stack
-
-| **Layer** | **Technology** |
+| Public | Private |
 | --- | --- |
-| **Blockchain** | NEAR (smart contracts in Rust) + Midnight (Compact contracts) |
-| **Smart Contracts** | NEAR: Rust + near-sdk; Midnight: Compact + compactc compiler |
-| **Frontend** | React 19 + Vite + Tailwind CSS |
-| **Wallet** | Lace (NEAR) + Midnight.js SDK |
-| **ZK Proofs** | hash(secret) = commitment pattern; Noir circuits (optional) |
-| **Infrastructure** | Docker (proof server), GitHub Actions (CI) |
-| **Oracles/ Bridges** | Custom ZK-proof-based cross-chain design |
+| Commitment hash | Secret witness |
+| Locked amount | Wallet address |
+| Proof validity | Sender ↔ receiver link |
+| Network and timestamp | User identity / history |
 
----
+A commitment is a one-way hash. Without the secret it cannot be linked to a wallet, and without a valid secret it cannot be redeemed.
 
-## 📊 Hackathon Submission Details
+## Hackathon tracks
 
-### Tracks Entered
-`privacy`, `defi`, `realworld`
+- **Privacy** — the core flow hides the link between NEAR and Midnight.
+- **DeFi** — a reusable privacy primitive for cross-chain liquidity and payments.
+- **Real world** — private payroll, vendor payments, and treasury operations.
 
-### Project Name
-`NEAR-Midnight Privacy Bridge`
+## Roadmap
 
-### Problem Solved
-Private cross-chain asset transfers without exposing wallet addresses, amounts, or transaction details on public blockchains.
+1. Deploy the NEAR contract to testnet and wire `deposit` / `withdraw` into the UI.
+2. Add a relayer service that submits Midnight claims and tracks proof status.
+3. Replace the local hash demo with the Midnight proof server and Compact circuit.
+4. Add NEP-413 message auth for session proofs and persistent encrypted claim storage.
 
-### NEAR Integration
-- NEAR smart contracts for lock/unlock operations
-- Lace wallet authentication
-- NEAR testnet deployment
-- Chain signatures for cross-chain verification
+## License
 
-### Demo Walkthrough
-
-1. **Connect**: User connects Lace wallet on NEAR testnet
-2. **Lock**: User locks 1 NEAR, provides secret, gets commitment hash
-3. **Proof**: User generates ZK proof (locally or via proof server)
-4. **Bridge**: Proof verified; private tokens minted on Midnight
-5. **Redeem**: User reveals secret; original NEAR assets unlocked
-6. **Verify**: Transaction IDs visible on both chains; amounts visible, senders/receivers private
-
-### Screenshots / Demo Video
-
-- Screenshot of frontend connecting Lace wallet
-- Demo of locking assets on NEAR
-- Demo of redeeming on Midnight
-- Proof generation via Docker proof server
-
-### Repositories
-
-- **Public repo**: https://github.com/your-username/near-privacy-bridge
-- **NEAR contract**: https://github.com/your-username/near-privacy-bridge/near-contract
-- **Midnight contract**: https://github.com/your-username/near-privacy-bridge/midnight-contract
-- **Frontend**: https://github.com/your-username/near-privacy-bridge/frontend
-
----
-
-## 🏆 Why This Wins the Hackathon
-
-1. **Combines expertise**: Leverages your existing Midnight/ZK knowledge + NEAR ecosystem
-2. **Real problem**: Privacy is a genuine concern for financial dApps
-3. **Novel approach**: ZK-proof bridge is underexplored in NEAR hackathons
-4. **Full stack**: Contracts + frontend + ZK proofs + deployment guide
-5. **Tracks fit**: Hits `privacy`, `defi`, and `realworld` simultaneously
-6. **Reproducible**: README includes exact steps to run and verify
-7. **Demo-ready**: Clear user flows from lock to redeem
-
----
-
-## 📜 License
-
-MIT License — see LICENSE file for details.
-
----
-
-## 📞 Contact
-
-- **GitHub**: @your-username
-- **NEAR Account**: your-account.near
-- **Discord**: NEAR Builders community
+MIT — see [LICENSE](LICENSE).

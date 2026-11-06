@@ -3,11 +3,122 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background: #050507;
+  }
+
   body {
-    @apply antialiased;
+    @apply bg-ink-950 font-sans text-zinc-200 antialiased;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(245, 158, 11, 0.3);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #08080b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #26262f;
+    border-radius: 999px;
+    border: 2px solid #08080b;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a46;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
   }
 }
 
-html {
-  scroll-behavior: smooth;
+@layer components {
+  .shell {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+
+  .panel {
+    @apply rounded-3xl border border-white/[0.07] bg-ink-850/80 shadow-card backdrop-blur-xl;
+  }
+
+  .panel-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:border-white/[0.14] hover:bg-ink-800/90;
+  }
+
+  .hairline {
+    @apply border-white/[0.07];
+  }
+
+  .label {
+    @apply text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-zinc-300;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-zinc-50 px-6 py-3.5 text-sm font-semibold text-ink-950 transition-all duration-300 hover:bg-white hover:shadow-[0_0_40px_-8px_rgba(255,255,255,0.35)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-amber {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-3.5 text-sm font-semibold text-ink-950 transition-all duration-300 hover:bg-amber-400 hover:shadow-amber active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-zinc-300 transition-all duration-200 hover:border-white/20 hover:bg-white/[0.07] hover:text-white active:scale-[0.985];
+  }
+
+  .field {
+    @apply w-full rounded-2xl border border-white/[0.08] bg-ink-900/80 px-4 py-3.5 text-sm text-zinc-100 outline-none transition-all placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10;
+  }
+
+  .mesh-line {
+    background-image: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px
+    );
+    background-size: 72px 100%;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(100deg, #ffffff 10%, #d6d6de 55%, #8b8b99 100%);
+  }
+
+  .amber-gradient {
+    background-image: linear-gradient(100deg, #fcd34d, #f59e0b 55%, #d97706);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  }
 }
