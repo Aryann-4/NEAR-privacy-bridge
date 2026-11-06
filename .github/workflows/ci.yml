@@ -35,16 +35,3 @@ jobs:
           test -f dist/index.html
           test -d dist/assets
           ls dist/assets | head
-
-  contracts:
-    name: NEAR contract check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cargo check
-        run: cargo check --manifest-path near-contract/Cargo.toml

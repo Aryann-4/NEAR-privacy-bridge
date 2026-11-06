@@ -100,7 +100,7 @@ npm run preview
 
 **Midnight** (`midnight-contract/contract/src/bridge.compact`): stores commitments, verifies the private witness, and prevents double spends. Secrets are used as private witness data and are never persisted on-chain.
 
-> The contracts have not been deployed by this repository's CI. Deploy them to testnet and add the contract IDs to the frontend before enabling real settlement.
+> **Status:** the NEAR and Midnight contracts are reference implementations included for review. They are not compiled in CI or deployed to testnet yet. The live frontend intentionally labels its bridge flow as a testnet preview and performs commitments locally; no funds move.
 
 ## Privacy model
 
