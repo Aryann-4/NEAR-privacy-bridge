@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 /target/
+near-contract/target/
 
 # Environment variables
 frontend/.env

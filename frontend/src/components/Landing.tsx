@@ -24,12 +24,12 @@ const features = [
   {
     icon: ShieldCheck,
     title: "Privacy by default",
-    body: "Only a commitment hash reaches the public chain. Sender, route and amount stay hidden.",
+    body: "Only a commitment hash crosses to Midnight. Your secret witness never leaves the browser.",
   },
   {
     icon: Fingerprint,
     title: "Zero-knowledge claims",
-    body: "Prove ownership of a deposit with a private witness. No wallet history to trace.",
+    body: "Prove ownership of a deposit with a private witness. The Midnight claim is not linked to your NEAR wallet.",
   },
   {
     icon: Zap,
@@ -96,7 +96,8 @@ export default function Landing({
           style={{ animationDelay: "160ms" }}
         >
           Lock assets on NEAR. Redeem privately on Midnight with a zero-knowledge
-          commitment. Your identity, route and amount stay yours.
+          commitment. The secret witness never leaves your browser—and the claim
+          reveals only a commitment.
         </p>
 
         <div

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Copy,
   Download,
+  ExternalLink,
   Fingerprint,
   KeyRound,
   Loader2,
@@ -16,6 +17,13 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { useWallet } from "../WalletContext";
+import {
+  CONTRACT_ID,
+  depositToBridge,
+  explorerAccountUrl,
+  explorerTxUrl,
+} from "../lib/near-contract";
 import {
   createCommitment,
   shortHash,
@@ -28,6 +36,7 @@ export type BridgeRecord = {
   commitment: string;
   amount: string;
   createdAt: number;
+  txHash?: string;
 };
 
 type BridgeCardProps = {
@@ -36,8 +45,32 @@ type BridgeCardProps = {
 };
 
 type Mode = "bridge" | "redeem";
-type Step = "idle" | "generating" | "done";
+type Step = "idle" | "generating" | "signing" | "done";
 type RedeemState = "idle" | "verifying" | "verified" | "invalid";
+
+function transactionError(cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : String(cause ?? "");
+
+  if (/reject|denied|cancel|closed|dismiss/i.test(message)) {
+    return "Transaction cancelled in your wallet.";
+  }
+  if (/insufficient|not enough balance/i.test(message)) {
+    return "Not enough NEAR for this amount plus gas.";
+  }
+  if (/deposit not found/i.test(message)) {
+    return "No on-chain deposit exists for this commitment.";
+  }
+  if (/not your deposit/i.test(message)) {
+    return "This commitment was deposited by a different account.";
+  }
+  if (/already claimed/i.test(message)) {
+    return "This commitment has already been claimed.";
+  }
+  if (/secret does not match/i.test(message)) {
+    return "The secret does not match the on-chain commitment.";
+  }
+  return "The NEAR transaction failed. Please try again.";
+}
 
 function NearMark({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -106,10 +139,13 @@ function HashRow({
 }
 
 export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
+  const { accountId, wallet, refreshBalance } = useWallet();
   const [mode, setMode] = useState<Mode>("bridge");
   const [amount, setAmount] = useState("1.0");
   const [step, setStep] = useState<Step>("idle");
-  const [record, setRecord] = useState<CommitmentRecord | null>(null);
+  const [record, setRecord] = useState<
+    (CommitmentRecord & { txHash: string }) | null
+  >(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,25 +171,47 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
       setError("Enter an amount greater than zero.");
       return;
     }
+    if (!wallet) {
+      setError("Connect a NEAR wallet first.");
+      return;
+    }
 
     setError(null);
     setStep("generating");
 
+    let next: CommitmentRecord;
     try {
-      const next = await createCommitment(amount);
-      // Give the proof step a moment so the state transition is legible.
-      await new Promise((resolve) => window.setTimeout(resolve, 1200));
-      setRecord(next);
+      next = await createCommitment(amount);
+    } catch (cause) {
+      console.error("Failed to create commitment:", cause);
+      setError("Could not generate the commitment. Please try again.");
+      setStep("idle");
+      return;
+    }
+
+    try {
+      setStep("signing");
+      const txHash = await depositToBridge(
+        wallet,
+        accountId,
+        amount,
+        next.commitment
+      );
+      const completed = { ...next, txHash };
+
+      setRecord(completed);
       setStep("done");
       onComplete({
         id: next.id,
         commitment: next.commitment,
         amount: next.amount,
         createdAt: next.createdAt,
+        txHash,
       });
+      await refreshBalance();
     } catch (cause) {
-      console.error("Failed to create commitment:", cause);
-      setError("Could not generate the commitment. Please try again.");
+      console.error("NEAR deposit failed:", cause);
+      setError(transactionError(cause));
       setStep("idle");
     }
   };
@@ -170,9 +228,11 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
     const payload = {
       protocol: "NEAR x Midnight Privacy Bridge",
       network: "testnet",
+      contract: CONTRACT_ID,
       commitment: record.commitment,
       secret: record.secret,
       amount: record.amount,
+      txHash: record.txHash || null,
       createdAt: new Date(record.createdAt).toISOString(),
       note: "Keep this file private. The secret is the only way to redeem the deposit.",
     };
@@ -280,7 +340,18 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => balance && setAmount(balance)}
+                  onClick={() => {
+                    if (!balance) return;
+                    const spendable = Math.max(0, Number(balance) - 0.05);
+                    setAmount(
+                      spendable > 0
+                        ? spendable
+                            .toFixed(4)
+                            .replace(/0+$/, "")
+                            .replace(/\.$/, "")
+                        : "0"
+                    );
+                  }}
                   className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 transition-colors hover:text-amber-300"
                 >
                   Max
@@ -325,10 +396,10 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
 
             <div className="mt-4 space-y-2.5 rounded-2xl border border-white/[0.05] bg-white/[0.015] px-4 py-3.5">
               {[
-                ["Bridge fee", "0.10%"],
-                ["Relayer fee", "0.002 NEAR"],
+                ["Bridge fee", "0% · testnet"],
+                ["Relayer", "Phase 2"],
                 ["Privacy", "1-of-N commitment"],
-                ["Est. settlement", "~12 sec"],
+                ["Settlement", "Midnight · Phase 2"],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className="text-[11px] text-zinc-500">{label}</span>
@@ -347,24 +418,37 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
             <button
               type="button"
               onClick={handleBridge}
-              disabled={step === "generating" || !amountValid}
+              disabled={step === "generating" || step === "signing" || !amountValid}
               className="btn-amber mt-4 h-[52px] w-full"
             >
               {step === "generating" ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating zero-knowledge commitment…
+                  Generating commitment…
+                </>
+              ) : step === "signing" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Confirm in your wallet…
                 </>
               ) : (
                 <>
                   <Lock className="h-4 w-4" />
-                  Generate private commitment
+                  Lock on NEAR testnet
                 </>
               )}
             </button>
 
-            <p className="mt-3 text-center text-[10px] text-zinc-600">
-              Testnet preview · commitment is generated locally · no funds move
+            <p className="mt-3 text-center text-[10px] leading-relaxed text-zinc-600">
+              Testnet · locks real testnet NEAR in{" "}
+              <a
+                href={explorerAccountUrl(CONTRACT_ID)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-zinc-500 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-amber-300"
+              >
+                {CONTRACT_ID}
+              </a>
             </p>
           </div>
         )}
@@ -377,13 +461,45 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
               </span>
               <div>
                 <p className="text-sm font-semibold text-emerald-200">
-                  Commitment created
+                  Locked on NEAR testnet
                 </p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-200/60">
-                  {record.amount} NEAR is ready to be claimed privately on Midnight.
+                  {record.amount} NEAR is locked against your commitment and ready
+                  to be claimed privately on Midnight.
                 </p>
               </div>
             </div>
+
+            {record.txHash ? (
+              <a
+                href={explorerTxUrl(record.txHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.07] bg-ink-900/70 px-3.5 py-3 transition-colors hover:border-white/[0.14] hover:bg-white/[0.03]"
+              >
+                <span className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                  NEAR transaction
+                </span>
+                <span className="flex items-center gap-1.5 font-mono text-[10.5px] text-zinc-400">
+                  {shortHash(record.txHash, 8, 6)}
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              </a>
+            ) : (
+              <p className="mt-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-3.5 py-3 text-[10.5px] leading-relaxed text-amber-200/70">
+                The wallet did not return a transaction hash. Check the{" "}
+                <a
+                  href={explorerAccountUrl(CONTRACT_ID)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  contract account
+                </a>{" "}
+                before saving this claim.
+              </p>
+            )}
 
             <div className="mt-4 space-y-2.5">
               <HashRow
@@ -425,8 +541,8 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
             <div className="flex items-start gap-2.5 rounded-2xl border border-violet-500/15 bg-violet-500/[0.04] px-4 py-3">
               <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-300" />
               <p className="text-[11px] leading-relaxed text-violet-200/70">
-                Verify a commitment locally before submitting the private claim to
-                Midnight. The secret is never broadcast.
+                Verify the witness locally. The secret stays in your browser and
+                never goes on-chain; the Midnight ZK claim ships in Phase 2.
               </p>
             </div>
 
@@ -485,7 +601,8 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
                   <span className="font-mono text-emerald-200/80">
                     {shortHash(redeemCommitment, 8, 6)}
                   </span>
-                  . A relayer can now unlock the private balance on Midnight.
+                  . The witness is valid and will release the private balance once
+                  Midnight settlement is connected.
                 </p>
               </div>
             )}

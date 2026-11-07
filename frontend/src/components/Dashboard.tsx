@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowDown,
   ArrowUpRight,
   ChevronDown,
   ChevronRight,
   Clock3,
+  ExternalLink,
   Fingerprint,
   Github,
   Lock,
@@ -16,6 +17,7 @@ import Logo from "./Logo";
 import AccountModal from "./AccountModal";
 import BridgeCard, { type BridgeRecord } from "./BridgeCard";
 import { shortHash, timeAgo } from "../lib/commitment";
+import { CONTRACT_ID, explorerAccountUrl, explorerTxUrl } from "../lib/near-contract";
 
 const STORAGE_KEY = "near-midnight-activity-v1";
 
@@ -26,30 +28,6 @@ type DashboardProps = {
 };
 
 type ActivityItem = BridgeRecord & { status: "Locked" | "Relayed" | "Proving" };
-
-const sampleActivity: ActivityItem[] = [
-  {
-    id: "sample-01",
-    commitment: "0x91c4a7f0b83d5e2619fa0c7d84b3e5a1f6d2098c7b3a5e1d4c8f0a2b6e9d3c71",
-    amount: "24.50",
-    createdAt: Date.now() - 1000 * 60 * 3,
-    status: "Relayed",
-  },
-  {
-    id: "sample-02",
-    commitment: "0x3e8b1d6f9a2c4e7b0d5f8a1c3e6b9d2f4a7c0e3b6d9f2a5c8e1b4d7f0a3c6e9b",
-    amount: "8.00",
-    createdAt: Date.now() - 1000 * 60 * 12,
-    status: "Locked",
-  },
-  {
-    id: "sample-03",
-    commitment: "0xa5f2c9e6b3d8a1f4c7e0b3d6a9f2c5e8b1d4a7f0c3e6b9d2a5f8c1e4b7d0a3f6",
-    amount: "112.20",
-    createdAt: Date.now() - 1000 * 60 * 29,
-    status: "Relayed",
-  },
-];
 
 const gradients = [
   "from-amber-400 to-orange-600",
@@ -82,10 +60,10 @@ function shortAccount(accountId: string) {
 }
 
 const stats = [
-  { label: "Total value locked", value: "$2.41M", hint: "across both chains" },
-  { label: "Private volume", value: "$18.7M", hint: "since genesis" },
-  { label: "Commitments", value: "12,408", hint: "all-time" },
-  { label: "Avg. settlement", value: "11.8s", hint: "NEAR → Midnight" },
+  { label: "Network", value: "Testnet", hint: "NEAR Protocol" },
+  { label: "Bridge contract", value: "Live", hint: "deployed and callable" },
+  { label: "Commitment", value: "SHA-256", hint: "32-byte secret witness" },
+  { label: "Settlement", value: "Midnight", hint: "ZK claim · Phase 2" },
 ];
 
 const statusStyles: Record<ActivityItem["status"], string> = {
@@ -102,13 +80,10 @@ export default function Dashboard({
   const [walletOpen, setWalletOpen] = useState(false);
   const [records, setRecords] = useState<BridgeRecord[]>(loadRecords);
 
-  const activity = useMemo<ActivityItem[]>(
-    () => [
-      ...records.map((record) => ({ ...record, status: "Locked" as const })),
-      ...sampleActivity,
-    ],
-    [records]
-  );
+  const activity: ActivityItem[] = records.map((record) => ({
+    ...record,
+    status: "Locked" as const,
+  }));
 
   const addRecord = (record: BridgeRecord) => {
     setRecords((previous) => {
@@ -183,8 +158,8 @@ export default function Dashboard({
                 Private value transfer, simplified.
               </h1>
               <p className="mt-2.5 max-w-xl text-[13.5px] leading-relaxed text-zinc-500">
-                Lock on NEAR, redeem on Midnight. One commitment, zero linkable
-                history between the two.
+                Lock on NEAR, redeem on Midnight. One commitment, and no linkable
+                history on the claim side.
               </p>
             </div>
 
@@ -207,7 +182,10 @@ export default function Dashboard({
         >
           <div className="flex items-center justify-between border-b border-white/[0.05] px-5 py-3 sm:px-6">
             <span className="label">Protocol overview</span>
-            <span className="text-[10px] text-zinc-600">Preview metrics</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-emerald-400/80">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Live deployment
+            </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4">
             {stats.map((stat, index) => (
@@ -306,33 +284,53 @@ export default function Dashboard({
               </div>
 
               <div className="mt-4 space-y-3.5">
-                {activity.slice(0, 4).map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] text-zinc-500">
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-medium text-zinc-200">
-                        {item.amount} NEAR
-                      </p>
-                      <p className="truncate font-mono text-[9.5px] text-zinc-600">
-                        {shortHash(item.commitment, 10, 6)}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <span
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-medium ${
-                          statusStyles[item.status]
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                      <p className="mt-1 text-[9px] text-zinc-600">
-                        {timeAgo(item.createdAt)}
-                      </p>
-                    </div>
+                {activity.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/[0.07] px-4 py-6 text-center">
+                    <p className="text-[11px] text-zinc-500">No deposits yet.</p>
+                    <p className="mt-1 text-[10px] leading-relaxed text-zinc-600">
+                      Lock NEAR to create your first private commitment.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  activity.slice(0, 4).map((item) => (
+                    <div key={item.id} className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] text-zinc-500">
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-medium text-zinc-200">
+                          {item.amount} NEAR
+                        </p>
+                        <p className="flex items-center gap-1 truncate font-mono text-[9.5px] text-zinc-600">
+                          {shortHash(item.commitment, 10, 6)}
+                          {item.txHash && (
+                            <a
+                              href={explorerTxUrl(item.txHash)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label="View deposit transaction"
+                              className="text-zinc-600 transition-colors hover:text-amber-300"
+                            >
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span
+                          className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-medium ${
+                            statusStyles[item.status]
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                        <p className="mt-1 text-[9px] text-zinc-600">
+                          {timeAgo(item.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               <p className="mt-4 border-t border-white/[0.05] pt-3 text-[9.5px] leading-relaxed text-zinc-600">
@@ -361,7 +359,7 @@ export default function Dashboard({
                 icon: Lock,
                 step: "01",
                 title: "Lock on NEAR",
-                body: "Deposit NEAR to the bridge contract. It stores only your commitment hash.",
+                body: "Deposit NEAR to the bridge contract. It locks the amount against your commitment hash.",
               },
               {
                 icon: Fingerprint,
@@ -398,7 +396,7 @@ export default function Dashboard({
         <footer className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/[0.05] pt-5 text-[10.5px] text-zinc-600 sm:flex-row">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3 w-3 text-amber-500/70" />
-            NEAR × Midnight Privacy Bridge · Testnet preview
+            NEAR × Midnight Privacy Bridge · Phase 1 · NEAR testnet
           </span>
           <div className="flex items-center gap-4">
             <a
@@ -409,6 +407,15 @@ export default function Dashboard({
             >
               <Github className="h-3 w-3" />
               Source
+            </a>
+            <a
+              href={explorerAccountUrl(CONTRACT_ID)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 transition-colors hover:text-zinc-300"
+            >
+              <span className="font-mono text-[9px] text-zinc-700">◆</span>
+              Contract
             </a>
             <a
               href="https://docs.near.org"

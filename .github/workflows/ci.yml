@@ -7,6 +7,24 @@ on:
     branches: [main]
 
 jobs:
+  contract:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: near-contract
+
+      - name: Run unit tests
+        run: cargo test --manifest-path near-contract/Cargo.toml
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest

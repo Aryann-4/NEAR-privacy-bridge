@@ -20,6 +20,7 @@ type WalletContextValue = {
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
   clearError: () => void;
 };
 
@@ -112,6 +113,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     };
   }, [connector]);
 
+  const refreshBalance = useCallback(async () => {
+    if (!accountId) {
+      setBalance(null);
+      return;
+    }
+
+    try {
+      const account = await provider.viewAccount({ accountId });
+      setBalance(formatNear(account.amount));
+    } catch {
+      setBalance(null);
+    }
+  }, [accountId, provider]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -178,9 +193,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       error,
       signIn,
       signOut,
+      refreshBalance,
       clearError,
     }),
-    [accountId, wallet, balance, loading, connecting, error, signIn, signOut, clearError]
+    [
+      accountId,
+      wallet,
+      balance,
+      loading,
+      connecting,
+      error,
+      signIn,
+      signOut,
+      refreshBalance,
+      clearError,
+    ]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
