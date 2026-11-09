@@ -49,6 +49,8 @@ The frontend implements the commitment lifecycle end to end: generation, real te
 
 ![Dashboard](docs/dashboard.png)
 
+**Demo video**: [Google Drive](https://drive.google.com/file/d/198iSlflwhJ8nxYdzQO4U17duaNB8NqVb/view?usp=sharing)
+
 **What works today**
 
 - Real NEAR testnet login through [`@hot-labs/near-connect`](https://github.com/hot-dao/near-selector), with session restore and disconnect.
