@@ -6,6 +6,10 @@ export const CONTRACT_ID =
   (import.meta.env.VITE_CONTRACT_ID as string | undefined)?.trim() ||
   "near-midnight-bridge.testnet";
 
+/** Midnight Preprod settlement contract, overridable at build time. */
+export const MIDNIGHT_CONTRACT_ID =
+  (import.meta.env.VITE_MIDNIGHT_CONTRACT_ID as string | undefined)?.trim() || "";
+
 export const NETWORK = "testnet" as const;
 
 export const explorerTxUrl = (hash: string) =>

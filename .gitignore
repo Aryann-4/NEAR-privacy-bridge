@@ -12,6 +12,16 @@ frontend/vite-stats.json
 
 # Midnight contract build
 midnight-contract/dist/
+midnight-contract/contract/src/managed/
+
+# Midnight wallet state, deployment records and local secrets
+midnight-contract/.env
+midnight-contract/.midnight-state.json
+midnight-contract/.midnight-wallet-state/
+midnight-contract/midnight-level-db/
+midnight-contract/.bridge-secrets.json
+midnight-contract/private-state/
+*.claim.json
 
 # Skill directories (do not commit)
 .roo/

@@ -20,6 +20,7 @@ import {
 import { useWallet } from "../WalletContext";
 import {
   CONTRACT_ID,
+  MIDNIGHT_CONTRACT_ID,
   depositToBridge,
   explorerAccountUrl,
   explorerTxUrl,
@@ -223,30 +224,61 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
     setError(null);
   };
 
-  const downloadClaim = () => {
-    if (!record) return;
-    const payload = {
-      protocol: "NEAR x Midnight Privacy Bridge",
-      network: "testnet",
-      contract: CONTRACT_ID,
-      commitment: record.commitment,
-      secret: record.secret,
-      amount: record.amount,
-      txHash: record.txHash || null,
-      createdAt: new Date(record.createdAt).toISOString(),
-      note: "Keep this file private. The secret is the only way to redeem the deposit.",
-    };
+  const saveJson = (filename: string, payload: unknown) => {
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `midnight-claim-${record.id}.json`;
+    anchor.download = filename;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
+  };
+
+  const claimInstructions = [
+    "1. Copy midnight-contract/.env.example to midnight-contract/.env and set MIDNIGHT_NETWORK=preprod.",
+    "2. Start the Midnight proof server on port 6300 (see README).",
+    "3. Run: npm run claim -- --file <this file>",
+    "The claim proves knowledge of the secret in zero knowledge; only a nullifier and the recipient are published.",
+  ];
+
+  const downloadClaim = () => {
+    if (!record) return;
+    saveJson(`midnight-claim-${record.id}.json`, {
+      protocol: "NEAR x Midnight Privacy Bridge",
+      network: "testnet",
+      contract: CONTRACT_ID,
+      midnightNetwork: "preprod",
+      midnightContract: MIDNIGHT_CONTRACT_ID || null,
+      commitment: record.commitment,
+      secret: record.secret,
+      amount: record.amount,
+      txHash: record.txHash || null,
+      createdAt: new Date(record.createdAt).toISOString(),
+      instructions: claimInstructions,
+      note: "Keep this file private. The secret is the only way to redeem the deposit.",
+    });
+  };
+
+  const downloadRedeemClaim = () => {
+    const secret = redeemSecret.trim().toLowerCase().replace(/^0x/, "");
+    const commitment = redeemCommitment.trim().toLowerCase().replace(/^0x/, "");
+    if (!secret || !commitment) return;
+    saveJson(`midnight-claim-${commitment.slice(0, 8)}.json`, {
+      protocol: "NEAR x Midnight Privacy Bridge",
+      network: "testnet",
+      contract: CONTRACT_ID,
+      midnightNetwork: "preprod",
+      midnightContract: MIDNIGHT_CONTRACT_ID || null,
+      commitment: `0x${commitment}`,
+      secret,
+      createdAt: new Date().toISOString(),
+      instructions: claimInstructions,
+      note: "Keep this file private. The secret is the only way to redeem the deposit.",
+    });
   };
 
   const handleVerify = async () => {
@@ -541,8 +573,8 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
             <div className="flex items-start gap-2.5 rounded-2xl border border-violet-500/15 bg-violet-500/[0.04] px-4 py-3">
               <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-300" />
               <p className="text-[11px] leading-relaxed text-violet-200/70">
-                Verify the witness locally. The secret stays in your browser and
-                never goes on-chain; the Midnight ZK claim ships in Phase 2.
+                Verify the witness locally, then export a claim file for the
+                Midnight Preprod contract. The secret never leaves your browser.
               </p>
             </div>
 
@@ -601,9 +633,34 @@ export default function BridgeCard({ balance, onComplete }: BridgeCardProps) {
                   <span className="font-mono text-emerald-200/80">
                     {shortHash(redeemCommitment, 8, 6)}
                   </span>
-                  . The witness is valid and will release the private balance once
-                  Midnight settlement is connected.
+                  . Export the claim file and run the Midnight CLI to prove
+                  knowledge of the secret and receive tNIGHT on Preprod.
                 </p>
+
+                <button
+                  type="button"
+                  onClick={downloadRedeemClaim}
+                  className="btn-primary mt-3 w-full py-2.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Midnight claim file
+                </button>
+
+                <div className="mt-3 rounded-xl border border-white/[0.07] bg-ink-950/70 px-3 py-2.5">
+                  <p className="text-[9.5px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+                    Claim on Midnight Preprod
+                  </p>
+                  <p className="mt-1.5 break-all font-mono text-[10px] leading-relaxed text-zinc-400">
+                    {MIDNIGHT_CONTRACT_ID
+                      ? `npm run claim -- --file <claim.json>`
+                      : "Midnight contract address is not configured in this build."}
+                  </p>
+                  {MIDNIGHT_CONTRACT_ID && (
+                    <p className="mt-1 break-all font-mono text-[9.5px] text-zinc-600">
+                      {MIDNIGHT_CONTRACT_ID}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
